@@ -6,11 +6,24 @@ import time
 from datetime import datetime, timedelta
 
 from edupage_api import Edupage
-from edupage_api.timeline import EventType, TimelineEvent
+from edupage_api.timeline import EventType, TimelineEvent, TimelineEvents
 
 from .config import Config
 
 logger = logging.getLogger(__name__)
+
+# Oprava chyby v edupage-api 0.12.5: niektoré školy vracajú "timelineUserProps"
+# ako prázdny zoznam namiesto slovníka a parsovanie spadne na AttributeError.
+_original_parse_items = TimelineEvents._TimelineEvents__parse_items
+
+
+def _parse_items_tolerant(self, items, user_props):
+    if not isinstance(user_props, dict):
+        user_props = {}
+    return _original_parse_items(self, items, user_props)
+
+
+TimelineEvents._TimelineEvents__parse_items = _parse_items_tolerant
 
 # Typy udalostí, ktoré rodiča reálne zaujímajú. Ostatné (pípnutie pri príchode,
 # výdaj stravy, interné pomocné eventy...) sa do digestu nedostanú.
