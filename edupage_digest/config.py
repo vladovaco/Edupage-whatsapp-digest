@@ -62,7 +62,12 @@ class Config:
     webhook_verify_token: str = field(
         default_factory=lambda: os.environ.get("WEBHOOK_VERIFY_TOKEN", "edupage-digest")
     )
-    webhook_port: int = field(default_factory=lambda: int(os.environ.get("WEBHOOK_PORT", "8000")))
+    # Render/Railway/Fly nastavujú port cez PORT, lokálne sa dá použiť WEBHOOK_PORT
+    webhook_port: int = field(
+        default_factory=lambda: int(
+            os.environ.get("PORT") or os.environ.get("WEBHOOK_PORT", "8000")
+        )
+    )
 
     state_file: Path = field(default_factory=lambda: PROJECT_ROOT / ".state.json")
     out_dir: Path = field(default_factory=lambda: PROJECT_ROOT / "out")

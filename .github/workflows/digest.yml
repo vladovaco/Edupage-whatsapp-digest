@@ -1,0 +1,70 @@
+# Spustenie digestu priamo z GitHubu – bez vlastného servera.
+#
+# 1. V repozitári nastav Settings → Secrets and variables → Actions → New repository secret:
+#    EDUPAGE_USERNAME, EDUPAGE_PASSWORD, EDUPAGE_SUBDOMAIN,
+#    WHATSAPP_TOKEN, WHATSAPP_PHONE_NUMBER_ID, WHATSAPP_RECIPIENT
+#    (voliteľne EDUPAGE_CHILD_ID a ANTHROPIC_API_KEY)
+# 2. Digest spustíš v záložke Actions → „Edupage digest" → Run workflow
+#    – funguje aj z mobilnej appky GitHub, takže hlasovku si vyžiadaš z telefónu.
+#
+# Ak chceš digest aj automaticky (napr. každý pracovný deň o 17:00),
+# odkomentuj blok `schedule` nižšie (čas je v UTC).
+
+name: Edupage digest
+
+on:
+  workflow_dispatch:
+    inputs:
+      days:
+        description: "Koľko dní dozadu (prázdne = od posledného behu)"
+        required: false
+        default: ""
+  # schedule:
+  #   - cron: "0 15 * * 1-5"   # 17:00 SELČ / 16:00 SEČ, pondelok–piatok
+
+jobs:
+  digest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install ffmpeg
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends ffmpeg
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      # .state.json si medzi behmi pamätá, čo už bolo odoslané
+      - uses: actions/cache/restore@v4
+        with:
+          path: .state.json
+          key: digest-state-${{ github.run_id }}
+          restore-keys: digest-state-
+
+      - name: Run digest
+        env:
+          EDUPAGE_USERNAME: ${{ secrets.EDUPAGE_USERNAME }}
+          EDUPAGE_PASSWORD: ${{ secrets.EDUPAGE_PASSWORD }}
+          EDUPAGE_SUBDOMAIN: ${{ secrets.EDUPAGE_SUBDOMAIN }}
+          EDUPAGE_CHILD_ID: ${{ secrets.EDUPAGE_CHILD_ID }}
+          WHATSAPP_TOKEN: ${{ secrets.WHATSAPP_TOKEN }}
+          WHATSAPP_PHONE_NUMBER_ID: ${{ secrets.WHATSAPP_PHONE_NUMBER_ID }}
+          WHATSAPP_RECIPIENT: ${{ secrets.WHATSAPP_RECIPIENT }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          if [ -n "${{ inputs.days }}" ]; then
+            python -m edupage_digest --days "${{ inputs.days }}"
+          else
+            python -m edupage_digest
+          fi
+
+      - uses: actions/cache/save@v4
+        if: always()
+        with:
+          path: .state.json
+          key: digest-state-${{ github.run_id }}

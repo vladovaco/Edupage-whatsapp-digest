@@ -74,6 +74,27 @@ a v Meta appke nastav webhook na `https://tvoja-domena/webhook` s verify tokenom
 `digest`, `novinky`, `správy`, `edupage` – a len z čísla `WHATSAPP_RECIPIENT`,
 nikto cudzí digest spustiť nemôže.
 
+## Deploy – kde to spustiť
+
+**Najrýchlejšie: GitHub Actions (bez servera, zadarmo).** Workflow je už v repe
+(`.github/workflows/digest.yml`): v repozitári nastav Actions secrets
+(`EDUPAGE_*`, `WHATSAPP_*`, voliteľne `ANTHROPIC_API_KEY`) a digest spustíš
+tlačidlom **Actions → Edupage digest → Run workflow** – aj z mobilnej appky
+GitHub. Odkomentovaním bloku `schedule` beží aj automaticky každý deň.
+Pozor: ak máš na Edupage zapnuté 2FA, headless beh čaká 30 s na potvrdenie
+v mobilnej appke Edupage – buď potvrď hneď po spustení, alebo 2FA vypni.
+
+**WhatsApp bot (napíšeš „digest", príde hlasovka): Render / Railway / Fly.io.**
+V repe je `Dockerfile` – na [Render](https://render.com) stačí *New → Web
+Service → z tohto GitHub repa*, Render Dockerfile rozpozná sám; premenné z
+`.env` vlož ako Environment Variables a výslednú URL (`https://…/webhook`)
+nastav v Meta appke ako webhook. Free tier stačí (služba po nečinnosti spí,
+prvá odpoveď preto môže prísť o ~minútu neskôr).
+
+**Vlastné železo (Raspberry Pi, NAS, VPS):** `docker run --env-file .env -p
+8000:8000 edupage-digest` alebo rovno `python webhook_server.py` + tunel
+(`cloudflared tunnel --url http://localhost:8000`) na verejnú HTTPS adresu.
+
 ## Poznámky
 
 - Hlasovka sa generuje ako OGG/Opus (mono) – presne to, čo WhatsApp vyžaduje,
