@@ -43,6 +43,15 @@ class Config:
     whatsapp_api_version: str = field(
         default_factory=lambda: os.environ.get("WHATSAPP_API_VERSION", "v21.0")
     )
+    # Voliteľné: názov schválenej šablóny správy (WhatsApp Manager → Message templates).
+    # Šablóna sa doručí aj mimo 24-hodinového okna, keď bežné správy neprídu.
+    # Musí mať v tele práve jednu premennú {{1}}, do ktorej sa vloží text digestu.
+    whatsapp_template_name: str | None = field(
+        default_factory=lambda: os.environ.get("WHATSAPP_TEMPLATE_NAME", "").strip() or None
+    )
+    whatsapp_template_lang: str = field(
+        default_factory=lambda: os.environ.get("WHATSAPP_TEMPLATE_LANG", "sk").strip() or "sk"
+    )
     # Poslať okrem hlasovky aj textovú verziu digestu
     send_text_too: bool = field(
         default_factory=lambda: os.environ.get("SEND_TEXT_TOO", "true").lower()

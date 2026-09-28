@@ -59,6 +59,34 @@ spustení pošle len to, čo medzičasom pribudlo. Ak nič nové nie je, nič ne
 Ak má tvoje Edupage konto zapnuté dvojfaktorové overenie, aplikácia počká
 30 sekúnd na potvrdenie v mobilnej appke, alebo si v termináli vypýta kód.
 
+## Voliteľné: schválená šablóna (doručenie aj mimo 24 h okna)
+
+WhatsApp doručí bežnú správu (hlasovku aj text) len vtedy, ak si botovi
+za posledných 24 hodín niečo napísal. Inak ju API síce prijme, ale správa
+nepríde. Aby digest prišiel vždy (napr. pri automatickom behu), vytvor si
+schválenú šablónu:
+
+1. V [WhatsApp Manager → Message templates](https://business.facebook.com/wa/manage/message-templates/)
+   klikni *Create template*, kategória **Utility**, názov napr. `edupage_digest`,
+   jazyk **Slovak**.
+2. Telo šablóny (premenná `{{1}}` musí byť presne jedna – vloží sa do nej digest):
+
+   ```
+   📚 Novinky z Edupage:
+
+   {{1}}
+
+   Pre hlasovku mi odpíš „digest".
+   ```
+
+3. Po schválení (zvyčajne pár minút) nastav `WHATSAPP_TEMPLATE_NAME=edupage_digest`
+   (v `.env` alebo ako Actions secret), prípadne `WHATSAPP_TEMPLATE_LANG`, ak
+   si zvolil iný jazyk ako slovenčinu (`sk`).
+
+Potom sa pri každom behu najprv pošle šablóna s textom digestu (skráteným
+na ~800 znakov) – tá príde vždy. Hlasovka a plný text prídu, len ak je okno
+otvorené; ak mu odpovieš a beží webhook server, pošle ti hlasovku hneď.
+
 ## Voliteľné: digest cez WhatsApp správu
 
 Ak chceš digest vyžiadať priamo z WhatsAppu (napíšeš botovi „digest" a on ti
