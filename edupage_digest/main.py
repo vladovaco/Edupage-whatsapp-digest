@@ -53,7 +53,7 @@ def run_digest(
     if dry_run:
         return text
 
-    audio_path, mime_type = tts.text_to_voice(text, config.out_dir)
+    audio_path, mime_type = tts.text_to_voice(text, config)
     media_id = whatsapp.upload_media(config, audio_path, mime_type)
     whatsapp.send_voice_message(config, media_id, to=to)
     if config.send_text_too:

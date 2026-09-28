@@ -3,7 +3,8 @@
 # 1. V repozitári nastav Settings → Secrets and variables → Actions → New repository secret:
 #    EDUPAGE_USERNAME, EDUPAGE_PASSWORD, EDUPAGE_SUBDOMAIN,
 #    WHATSAPP_TOKEN, WHATSAPP_PHONE_NUMBER_ID, WHATSAPP_RECIPIENT
-#    (voliteľne EDUPAGE_CHILD_ID a ANTHROPIC_API_KEY)
+#    ANTHROPIC_API_KEY, ELEVENLABS_API_KEY
+#    (voliteľne EDUPAGE_CHILD_ID, ELEVENLABS_VOICE_ID)
 # 2. Digest spustíš v záložke Actions → „Edupage digest" → Run workflow
 #    – funguje aj z mobilnej appky GitHub, takže hlasovku si vyžiadaš z telefónu.
 #
@@ -56,6 +57,8 @@ jobs:
           WHATSAPP_PHONE_NUMBER_ID: ${{ secrets.WHATSAPP_PHONE_NUMBER_ID }}
           WHATSAPP_RECIPIENT: ${{ secrets.WHATSAPP_RECIPIENT }}
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          ELEVENLABS_API_KEY: ${{ secrets.ELEVENLABS_API_KEY }}
+          ELEVENLABS_VOICE_ID: ${{ secrets.ELEVENLABS_VOICE_ID }}
         run: |
           if [ -n "${{ inputs.days }}" ]; then
             python -m edupage_digest --days "${{ inputs.days }}"

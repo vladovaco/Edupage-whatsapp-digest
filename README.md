@@ -10,8 +10,10 @@ Ako to funguje:
 1. **Edupage** – prihlási sa cez [`edupage-api`](https://pypi.org/project/edupage-api/)
    a stiahne nové udalosti z nástenky od posledného spustenia.
 2. **Digest** – text zhrnie do prirodzenej hovorenej slovenčiny. Ak nastavíš
-   `ANTHROPIC_API_KEY`, zhrnutie robí Claude; bez neho sa použije jednoduchá šablóna.
-3. **Hlasovka** – text sa prevedie na reč (gTTS, slovenčina) a cez `ffmpeg`
+   `ANTHROPIC_API_KEY`, zhrnutie robí Claude Opus 5.5; bez neho sa použije jednoduchá šablóna.
+3. **Hlasovka** – text sa prevedie na reč cez [ElevenLabs](https://elevenlabs.io)
+   (model `eleven_multilingual_v2`, zvláda slovenčinu; bez `ELEVENLABS_API_KEY`
+   alebo pri chybe API sa použije gTTS) a cez `ffmpeg`
    skonvertuje do OGG/Opus, aby sa vo WhatsApp zobrazil ako skutočná hlasovka.
 4. **WhatsApp** – audio sa odošle cez oficiálne WhatsApp Cloud API (Meta).
 
@@ -34,7 +36,10 @@ cp .env.example .env             # a doplň svoje údaje
 | `EDUPAGE_CHILD_ID` | voliteľné – `person_id` dieťaťa, ak máš v konte viac detí |
 | `WHATSAPP_TOKEN`, `WHATSAPP_PHONE_NUMBER_ID` | prístup k [WhatsApp Cloud API](https://developers.facebook.com/docs/whatsapp/cloud-api/get-started) |
 | `WHATSAPP_RECIPIENT` | tvoje číslo v medzinárodnom formáte, napr. `421900123456` |
-| `ANTHROPIC_API_KEY` | voliteľné – kvalitnejšie zhrnutie cez Claude |
+| `ANTHROPIC_API_KEY` | zhrnutie cez Claude Opus 5.5 (bez neho jednoduchá šablóna) |
+| `ANTHROPIC_MODEL` | voliteľné – iný Claude model, predvolene `claude-opus-5-5` |
+| `ELEVENLABS_API_KEY` | hlas cez ElevenLabs (bez neho gTTS) |
+| `ELEVENLABS_VOICE_ID`, `ELEVENLABS_MODEL` | voliteľné – hlas (predvolene „George“) a model (`eleven_multilingual_v2`) |
 
 WhatsApp Cloud API je oficiálna cesta od Mety: v [Meta for Developers](https://developers.facebook.com/)
 si vytvoríš appku typu *Business*, pridáš produkt *WhatsApp* a dostaneš testovacie
@@ -78,7 +83,7 @@ nikto cudzí digest spustiť nemôže.
 
 **Najrýchlejšie: GitHub Actions (bez servera, zadarmo).** Workflow je už v repe
 (`.github/workflows/digest.yml`): v repozitári nastav Actions secrets
-(`EDUPAGE_*`, `WHATSAPP_*`, voliteľne `ANTHROPIC_API_KEY`) a digest spustíš
+(`EDUPAGE_*`, `WHATSAPP_*`, `ANTHROPIC_API_KEY`, `ELEVENLABS_API_KEY`) a digest spustíš
 tlačidlom **Actions → Edupage digest → Run workflow** – aj z mobilnej appky
 GitHub. Odkomentovaním bloku `schedule` beží aj automaticky každý deň.
 Pozor: ak máš na Edupage zapnuté 2FA, headless beh čaká 30 s na potvrdenie

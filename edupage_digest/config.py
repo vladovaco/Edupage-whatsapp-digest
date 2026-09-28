@@ -57,6 +57,24 @@ class Config:
     anthropic_api_key: str | None = field(
         default_factory=lambda: os.environ.get("ANTHROPIC_API_KEY", "").strip() or None
     )
+    anthropic_model: str = field(
+        default_factory=lambda: os.environ.get("ANTHROPIC_MODEL", "").strip()
+        or "claude-opus-5-5"
+    )
+
+    # ElevenLabs text-to-speech. Bez kľúča sa použije gTTS.
+    elevenlabs_api_key: str | None = field(
+        default_factory=lambda: os.environ.get("ELEVENLABS_API_KEY", "").strip() or None
+    )
+    # Predvolene „George“ – viacjazyčný hlas, ktorý zvláda aj slovenčinu
+    elevenlabs_voice_id: str = field(
+        default_factory=lambda: os.environ.get("ELEVENLABS_VOICE_ID", "").strip()
+        or "JBFqnCBsd6RMkjVDRZzb"
+    )
+    elevenlabs_model: str = field(
+        default_factory=lambda: os.environ.get("ELEVENLABS_MODEL", "").strip()
+        or "eleven_multilingual_v2"
+    )
 
     # Webhook server (režim „na požiadanie cez WhatsApp správu“)
     webhook_verify_token: str = field(
