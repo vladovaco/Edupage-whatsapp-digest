@@ -110,7 +110,7 @@ def build_claude_digest(events: list[TimelineEvent], config: Config) -> str | No
     client = anthropic.Anthropic(api_key=config.anthropic_api_key)
     try:
         response = client.messages.create(
-            model="claude-opus-5",
+            model=config.anthropic_model,
             max_tokens=4096,  # digest je zámerne krátky (~200 slov)
             system=SUMMARY_SYSTEM_PROMPT,
             messages=[
