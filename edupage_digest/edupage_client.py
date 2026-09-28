@@ -1,16 +1,25 @@
 """Prihlásenie do Edupage a stiahnutie noviniek z nástenky (timeline)."""
 
 import logging
+import socket
 import sys
 import time
 from datetime import datetime, timedelta
 
+import requests
+import urllib3.util.connection
 from edupage_api import Edupage
 from edupage_api.timeline import EventType, TimelineEvent, TimelineEvents
 
 from .config import Config
 
 logger = logging.getLogger(__name__)
+
+# GitHub Actions runnery nemajú funkčné IPv6 a Edupage má AAAA záznamy – spojenie
+# potom občas padá na „[Errno 101] Network is unreachable". Vynútime IPv4.
+urllib3.util.connection.allowed_gai_family = lambda: socket.AF_INET
+
+LOGIN_ATTEMPTS = 3
 
 # Oprava chyby v edupage-api 0.12.5: niektoré školy vracajú "timelineUserProps"
 # ako prázdny zoznam namiesto slovníka a parsovanie spadne na AttributeError.
@@ -54,11 +63,22 @@ RELEVANT_EVENT_TYPES = {
 }
 
 
+def _login_with_retry(edupage: Edupage, config: Config):
+    for attempt in range(1, LOGIN_ATTEMPTS + 1):
+        try:
+            return edupage.login(
+                config.edupage_username, config.edupage_password, config.edupage_subdomain
+            )
+        except requests.exceptions.ConnectionError as e:
+            if attempt == LOGIN_ATTEMPTS:
+                raise
+            logger.warning("Edupage nedostupné (%s), skúšam znova o %s s.", e, 5 * attempt)
+            time.sleep(5 * attempt)
+
+
 def login(config: Config) -> Edupage:
     edupage = Edupage()
-    second_factor = edupage.login(
-        config.edupage_username, config.edupage_password, config.edupage_subdomain
-    )
+    second_factor = _login_with_retry(edupage, config)
 
     if second_factor is not None:
         logger.info("Edupage vyžaduje dvojfaktorové overenie.")
