@@ -85,7 +85,7 @@ nikto cudzí digest spustiť nemôže.
 (`.github/workflows/digest.yml`): v repozitári nastav Actions secrets
 (`EDUPAGE_*`, `WHATSAPP_*`, `ANTHROPIC_API_KEY`, `ELEVENLABS_API_KEY`) a digest spustíš
 tlačidlom **Actions → Edupage digest → Run workflow** – aj z mobilnej appky
-GitHub. Automaticky beží aj každý pracovný deň o 17:00 (blok `schedule` vo workflow).
+GitHub. Automaticky beží aj každý pracovný deň o 17:05 (blok `schedule` vo workflow).
 Pozor: ak máš na Edupage zapnuté 2FA, headless beh čaká 30 s na potvrdenie
 v mobilnej appke Edupage – buď potvrď hneď po spustení, alebo 2FA vypni.
 
