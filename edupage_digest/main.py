@@ -5,11 +5,17 @@ import json
 import logging
 from datetime import datetime, timedelta
 
+import requests
+
 from . import digest as digest_module
 from . import edupage_client, tts, whatsapp
 from .config import Config, load_config
 
 logger = logging.getLogger(__name__)
+
+# Návratový kód pri sieťovej chybe (Edupage nedostupné). GitHub Actions workflow
+# podľa neho vie, že má beh zopakovať na inom runneri.
+NETWORK_ERROR_EXIT_CODE = 3
 
 
 def _load_since(config: Config) -> datetime:
@@ -88,7 +94,11 @@ def main() -> None:
     if ignore_state:
         config.digest_days = args.days
 
-    text = run_digest(config, dry_run=args.dry_run, ignore_state=ignore_state)
+    try:
+        text = run_digest(config, dry_run=args.dry_run, ignore_state=ignore_state)
+    except (requests.exceptions.ConnectionError, requests.exceptions.Timeout) as e:
+        logger.error("Sieťová chyba: %s", e)
+        raise SystemExit(NETWORK_ERROR_EXIT_CODE)
     if text:
         print("\n" + text)
     else:

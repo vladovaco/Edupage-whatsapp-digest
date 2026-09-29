@@ -1,0 +1,80 @@
+# Jeden pokus o digest. Volá ho digest.yml – pri sieťovej chybe (Edupage
+# nedostupné z runnera) ho zavolá znova, čím dostane nový runner s inou sieťou.
+#
+# Job končí úspešne aj pri sieťovej chybe (s výstupom network_error=true),
+# aby sa výstup spoľahlivo dostal k ďalšiemu pokusu. Či celý workflow zlyhal,
+# rozhodne až posledný job v digest.yml.
+
+name: Digest attempt
+
+on:
+  workflow_call:
+    inputs:
+      days:
+        type: string
+        default: ""
+    outputs:
+      network_error:
+        value: ${{ jobs.attempt.outputs.network_error }}
+
+jobs:
+  attempt:
+    runs-on: ubuntu-latest
+    outputs:
+      network_error: ${{ steps.run.outputs.network_error }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install ffmpeg
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends ffmpeg
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      # .state.json si medzi behmi pamätá, čo už bolo odoslané
+      - uses: actions/cache/restore@v4
+        with:
+          path: .state.json
+          key: digest-state-${{ github.run_id }}
+          restore-keys: digest-state-
+
+      - name: Run digest
+        id: run
+        env:
+          EDUPAGE_USERNAME: ${{ secrets.EDUPAGE_USERNAME }}
+          EDUPAGE_PASSWORD: ${{ secrets.EDUPAGE_PASSWORD }}
+          EDUPAGE_SUBDOMAIN: ${{ secrets.EDUPAGE_SUBDOMAIN }}
+          EDUPAGE_CHILD_ID: ${{ secrets.EDUPAGE_CHILD_ID }}
+          WHATSAPP_TOKEN: ${{ secrets.WHATSAPP_TOKEN }}
+          WHATSAPP_PHONE_NUMBER_ID: ${{ secrets.WHATSAPP_PHONE_NUMBER_ID }}
+          WHATSAPP_RECIPIENT: ${{ secrets.WHATSAPP_RECIPIENT }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          ELEVENLABS_API_KEY: ${{ secrets.ELEVENLABS_API_KEY }}
+          ELEVENLABS_VOICE_ID: ${{ secrets.ELEVENLABS_VOICE_ID }}
+        run: |
+          set +e
+          if [ -n "${{ inputs.days }}" ]; then
+            python -m edupage_digest --days "${{ inputs.days }}"
+          else
+            python -m edupage_digest
+          fi
+          code=$?
+          # 3 = sieťová chyba (NETWORK_ERROR_EXIT_CODE v edupage_digest/main.py)
+          if [ "$code" = "3" ]; then
+            echo "::warning::Edupage nedostupné z tohto runnera – skúsi sa znova na inom."
+            echo "network_error=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "network_error=false" >> "$GITHUB_OUTPUT"
+          exit $code
+
+      - uses: actions/cache/save@v4
+        if: always() && steps.run.outputs.network_error != 'true'
+        with:
+          path: .state.json
+          key: digest-state-${{ github.run_id }}

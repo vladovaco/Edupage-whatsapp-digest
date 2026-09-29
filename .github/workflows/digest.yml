@@ -9,8 +9,12 @@
 #    – funguje aj z mobilnej appky GitHub, takže hlasovku si vyžiadaš z telefónu.
 #
 # Automaticky beží každý pracovný deň o 17:00 bratislavského času.
-# GitHub cron pozná len UTC, preto sú tu dva časy (letný a zimný) a krok
-# „Check local time“ ten nesprávny preskočí.
+# GitHub cron pozná len UTC, preto sú tu dva časy (letný a zimný) a job
+# „check-time“ ten nesprávny preskočí.
+#
+# GitHub runnery občas nemajú spojenie na Edupage (Network is unreachable).
+# Samotný pokus je v _digest-attempt.yml a pri sieťovej chybe sa zopakuje
+# až trikrát, vždy na novom runneri.
 
 name: Edupage digest
 
@@ -26,65 +30,55 @@ on:
     - cron: "0 16 * * 1-5"   # 17:00 SEČ (zimný čas)
 
 jobs:
-  digest:
+  check-time:
+    runs-on: ubuntu-latest
+    outputs:
+      run: ${{ steps.check.outputs.run }}
+    steps:
+      - id: check
+        run: |
+          if [ "${{ github.event_name }}" != "schedule" ]; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          hour=$(TZ=Europe/Bratislava date +%H)
+          if [ "$hour" = "17" ]; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "V Bratislave je ${hour}:00, nie 17:00 – tento beh preskakujem."
+            echo "run=false" >> "$GITHUB_OUTPUT"
+          fi
+
+  attempt-1:
+    needs: check-time
+    if: needs.check-time.outputs.run == 'true'
+    uses: ./.github/workflows/_digest-attempt.yml
+    with:
+      days: ${{ inputs.days || '' }}
+    secrets: inherit
+
+  attempt-2:
+    needs: attempt-1
+    if: needs.attempt-1.outputs.network_error == 'true'
+    uses: ./.github/workflows/_digest-attempt.yml
+    with:
+      days: ${{ inputs.days || '' }}
+    secrets: inherit
+
+  attempt-3:
+    needs: attempt-2
+    if: needs.attempt-2.outputs.network_error == 'true'
+    uses: ./.github/workflows/_digest-attempt.yml
+    with:
+      days: ${{ inputs.days || '' }}
+    secrets: inherit
+
+  # Ak ani tretí pokus neprešiel cez sieť, označ workflow ako zlyhaný.
+  result:
+    needs: attempt-3
+    if: needs.attempt-3.outputs.network_error == 'true'
     runs-on: ubuntu-latest
     steps:
-      - name: Check local time
-        if: github.event_name == 'schedule'
-        run: |
-          hour=$(TZ=Europe/Bratislava date +%H)
-          if [ "$hour" != "17" ]; then
-            echo "V Bratislave je ${hour}:00, nie 17:00 – tento beh preskakujem."
-            echo "SKIP=1" >> "$GITHUB_ENV"
-          fi
-
-      - uses: actions/checkout@v4
-        if: env.SKIP != '1'
-
-      - uses: actions/setup-python@v5
-        if: env.SKIP != '1'
-        with:
-          python-version: "3.12"
-          cache: pip
-
-      - name: Install ffmpeg
-        if: env.SKIP != '1'
-        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends ffmpeg
-
-      - name: Install dependencies
-        if: env.SKIP != '1'
-        run: pip install -r requirements.txt
-
-      # .state.json si medzi behmi pamätá, čo už bolo odoslané
-      - uses: actions/cache/restore@v4
-        if: env.SKIP != '1'
-        with:
-          path: .state.json
-          key: digest-state-${{ github.run_id }}
-          restore-keys: digest-state-
-
-      - name: Run digest
-        if: env.SKIP != '1'
-        env:
-          EDUPAGE_USERNAME: ${{ secrets.EDUPAGE_USERNAME }}
-          EDUPAGE_PASSWORD: ${{ secrets.EDUPAGE_PASSWORD }}
-          EDUPAGE_SUBDOMAIN: ${{ secrets.EDUPAGE_SUBDOMAIN }}
-          EDUPAGE_CHILD_ID: ${{ secrets.EDUPAGE_CHILD_ID }}
-          WHATSAPP_TOKEN: ${{ secrets.WHATSAPP_TOKEN }}
-          WHATSAPP_PHONE_NUMBER_ID: ${{ secrets.WHATSAPP_PHONE_NUMBER_ID }}
-          WHATSAPP_RECIPIENT: ${{ secrets.WHATSAPP_RECIPIENT }}
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-          ELEVENLABS_API_KEY: ${{ secrets.ELEVENLABS_API_KEY }}
-          ELEVENLABS_VOICE_ID: ${{ secrets.ELEVENLABS_VOICE_ID }}
-        run: |
-          if [ -n "${{ inputs.days }}" ]; then
-            python -m edupage_digest --days "${{ inputs.days }}"
-          else
-            python -m edupage_digest
-          fi
-
-      - uses: actions/cache/save@v4
-        if: always() && env.SKIP != '1'
-        with:
-          path: .state.json
-          key: digest-state-${{ github.run_id }}
+      - run: |
+          echo "::error::Edupage bolo nedostupné pri všetkých troch pokusoch."
+          exit 1
