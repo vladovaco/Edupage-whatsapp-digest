@@ -8,8 +8,9 @@
 # 2. Digest spustíš v záložke Actions → „Edupage digest" → Run workflow
 #    – funguje aj z mobilnej appky GitHub, takže hlasovku si vyžiadaš z telefónu.
 #
-# Ak chceš digest aj automaticky (napr. každý pracovný deň o 17:00),
-# odkomentuj blok `schedule` nižšie (čas je v UTC).
+# Automaticky beží každý pracovný deň o 17:00 bratislavského času.
+# GitHub cron pozná len UTC, preto sú tu dva časy (letný a zimný) a krok
+# „Check local time“ ten nesprávny preskočí.
 
 name: Edupage digest
 
@@ -20,34 +21,50 @@ on:
         description: "Koľko dní dozadu (prázdne = od posledného behu)"
         required: false
         default: ""
-  # schedule:
-  #   - cron: "0 15 * * 1-5"   # 17:00 SELČ / 16:00 SEČ, pondelok–piatok
+  schedule:
+    - cron: "0 15 * * 1-5"   # 17:00 SELČ (letný čas)
+    - cron: "0 16 * * 1-5"   # 17:00 SEČ (zimný čas)
 
 jobs:
   digest:
     runs-on: ubuntu-latest
     steps:
+      - name: Check local time
+        if: github.event_name == 'schedule'
+        run: |
+          hour=$(TZ=Europe/Bratislava date +%H)
+          if [ "$hour" != "17" ]; then
+            echo "V Bratislave je ${hour}:00, nie 17:00 – tento beh preskakujem."
+            echo "SKIP=1" >> "$GITHUB_ENV"
+          fi
+
       - uses: actions/checkout@v4
+        if: env.SKIP != '1'
 
       - uses: actions/setup-python@v5
+        if: env.SKIP != '1'
         with:
           python-version: "3.12"
           cache: pip
 
       - name: Install ffmpeg
+        if: env.SKIP != '1'
         run: sudo apt-get update && sudo apt-get install -y --no-install-recommends ffmpeg
 
       - name: Install dependencies
+        if: env.SKIP != '1'
         run: pip install -r requirements.txt
 
       # .state.json si medzi behmi pamätá, čo už bolo odoslané
       - uses: actions/cache/restore@v4
+        if: env.SKIP != '1'
         with:
           path: .state.json
           key: digest-state-${{ github.run_id }}
           restore-keys: digest-state-
 
       - name: Run digest
+        if: env.SKIP != '1'
         env:
           EDUPAGE_USERNAME: ${{ secrets.EDUPAGE_USERNAME }}
           EDUPAGE_PASSWORD: ${{ secrets.EDUPAGE_PASSWORD }}
@@ -67,7 +84,7 @@ jobs:
           fi
 
       - uses: actions/cache/save@v4
-        if: always()
+        if: always() && env.SKIP != '1'
         with:
           path: .state.json
           key: digest-state-${{ github.run_id }}
