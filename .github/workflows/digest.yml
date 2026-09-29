@@ -8,9 +8,11 @@
 # 2. Digest spustíš v záložke Actions → „Edupage digest" → Run workflow
 #    – funguje aj z mobilnej appky GitHub, takže hlasovku si vyžiadaš z telefónu.
 #
-# Automaticky beží každý pracovný deň o 17:00 bratislavského času.
-# GitHub cron pozná len UTC, preto sú tu dva časy (letný a zimný) a job
-# „check-time“ ten nesprávny preskočí.
+# Automaticky beží každý pracovný deň o 17:05 bratislavského času.
+# GitHub cron pozná len UTC, preto sú tu dva crony (letný a zimný čas) a job
+# „check-time“ podľa aktuálneho časového pásma ten nesprávny preskočí.
+# Minúta 5 je zámerne: behy presne o celej hodine GitHub pri vyťažení
+# často odkladá alebo úplne vynechá.
 #
 # GitHub runnery občas nemajú spojenie na Edupage (Network is unreachable).
 # Samotný pokus je v _digest-attempt.yml a pri sieťovej chybe sa zopakuje
@@ -26,8 +28,8 @@ on:
         required: false
         default: ""
   schedule:
-    - cron: "0 15 * * 1-5"   # 17:00 SELČ (letný čas)
-    - cron: "0 16 * * 1-5"   # 17:00 SEČ (zimný čas)
+    - cron: "5 15 * * 1-5"   # 17:05 SELČ (letný čas)
+    - cron: "5 16 * * 1-5"   # 17:05 SEČ (zimný čas)
 
 jobs:
   check-time:
@@ -41,13 +43,16 @@ jobs:
             echo "run=true" >> "$GITHUB_OUTPUT"
             exit 0
           fi
-          hour=$(TZ=Europe/Bratislava date +%H)
-          if [ "$hour" = "17" ]; then
-            echo "run=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "V Bratislave je ${hour}:00, nie 17:00 – tento beh preskakujem."
-            echo "run=false" >> "$GITHUB_OUTPUT"
-          fi
+          # Ktorý cron beh spustil, a či je v Bratislave práve letný čas (CEST)
+          cron="${{ github.event.schedule }}"
+          zone=$(TZ=Europe/Bratislava date +%Z)
+          case "$cron $zone" in
+            "5 15 * * 1-5 CEST"|"5 16 * * 1-5 CET")
+              echo "run=true" >> "$GITHUB_OUTPUT" ;;
+            *)
+              echo "Cron '$cron' nepatrí k pásmu $zone – tento beh preskakujem."
+              echo "run=false" >> "$GITHUB_OUTPUT" ;;
+          esac
 
   attempt-1:
     needs: check-time
