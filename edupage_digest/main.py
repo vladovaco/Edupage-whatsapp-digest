@@ -63,7 +63,11 @@ def run_digest(
     # (ak si za posledných 24 h napísal botovi).
     truncated = True
     if config.whatsapp_template_name:
-        truncated = whatsapp.send_template_message(config, text, to=to)
+        try:
+            truncated = whatsapp.send_template_message(config, text, to=to)
+        except whatsapp.WhatsAppError as e:
+            # Zlá šablóna nemá zhodiť celý beh – hlasovka a text idú ďalej.
+            logger.warning("Šablónu sa nepodarilo odoslať: %s", e)
 
     audio_path, mime_type = tts.text_to_voice(text, config)
     media_id = whatsapp.upload_media(config, audio_path, mime_type)
