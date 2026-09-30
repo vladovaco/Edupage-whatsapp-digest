@@ -59,10 +59,16 @@ def run_digest(
     if dry_run:
         return text
 
+    # Šablóna príde vždy; hlasovka a plný text len v 24-hodinovom okne
+    # (ak si za posledných 24 h napísal botovi).
+    truncated = True
+    if config.whatsapp_template_name:
+        truncated = whatsapp.send_template_message(config, text, to=to)
+
     audio_path, mime_type = tts.text_to_voice(text, config)
     media_id = whatsapp.upload_media(config, audio_path, mime_type)
     whatsapp.send_voice_message(config, media_id, to=to)
-    if config.send_text_too:
+    if config.send_text_too and truncated:
         whatsapp.send_text_message(config, "📚 Edupage digest:\n\n" + text, to=to)
 
     if not ignore_state:
