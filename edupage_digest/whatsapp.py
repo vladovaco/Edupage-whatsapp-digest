@@ -11,6 +11,10 @@ logger = logging.getLogger(__name__)
 
 TIMEOUT = 60
 
+# Meta povoľuje v tele šablóny najviac 1024 znakov vrátane pevného textu,
+# preto necháme rezervu na text, ktorý je v šablóne okolo premennej.
+TEMPLATE_PARAM_MAX = 800
+
 
 class WhatsAppError(RuntimeError):
     pass
@@ -85,3 +89,41 @@ def send_text_message(config: Config, text: str, to: str | None = None) -> None:
     )
     _check(response)
     logger.info("Textová správa odoslaná na %s.", to or config.whatsapp_recipient)
+
+
+def _template_param(text: str) -> str:
+    # Parameter šablóny nesmie obsahovať nové riadky, tabulátory ani viac
+    # ako 4 medzery za sebou – inak ho API odmietne.
+    flat = " ".join(text.split())
+    if len(flat) > TEMPLATE_PARAM_MAX:
+        flat = flat[: TEMPLATE_PARAM_MAX - 1].rstrip() + "…"
+    return flat
+
+
+def send_template_message(config: Config, text: str, to: str | None = None) -> bool:
+    """Pošle schválenú šablónu s textom digestu. Vráti True, ak sa text skrátil."""
+    param = _template_param(text)
+    response = requests.post(
+        f"{_base_url(config)}/messages",
+        headers=_headers(config),
+        json={
+            "messaging_product": "whatsapp",
+            "to": to or config.whatsapp_recipient,
+            "type": "template",
+            "template": {
+                "name": config.whatsapp_template_name,
+                "language": {"code": config.whatsapp_template_lang},
+                "components": [
+                    {"type": "body", "parameters": [{"type": "text", "text": param}]}
+                ],
+            },
+        },
+        timeout=TIMEOUT,
+    )
+    _check(response)
+    logger.info(
+        "Šablóna %s odoslaná na %s.",
+        config.whatsapp_template_name,
+        to or config.whatsapp_recipient,
+    )
+    return param.endswith("…")

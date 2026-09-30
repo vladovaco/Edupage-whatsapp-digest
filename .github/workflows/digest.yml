@@ -4,7 +4,8 @@
 #    EDUPAGE_USERNAME, EDUPAGE_PASSWORD, EDUPAGE_SUBDOMAIN,
 #    WHATSAPP_TOKEN, WHATSAPP_PHONE_NUMBER_ID, WHATSAPP_RECIPIENT
 #    ANTHROPIC_API_KEY, ELEVENLABS_API_KEY
-#    (voliteľne EDUPAGE_CHILD_ID, ELEVENLABS_VOICE_ID)
+#    WHATSAPP_TEMPLATE_NAME (šablóna – bez nej správy mimo 24 h okna neprídu)
+#    (voliteľne EDUPAGE_CHILD_ID, ELEVENLABS_VOICE_ID, WHATSAPP_TEMPLATE_LANG)
 # 2. Digest spustíš v záložke Actions → „Edupage digest" → Run workflow
 #    – funguje aj z mobilnej appky GitHub, takže hlasovku si vyžiadaš z telefónu.
 #
